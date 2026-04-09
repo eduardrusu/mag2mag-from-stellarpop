@@ -1,9 +1,10 @@
 """
 A module of tools to work with SED, spectral, and filter operations.
 """
-import stellarpop as sp
-filterpath = sp.__path__[0]+'/filters/'
-SEDpath = sp.__path__[0]+'/templates/'
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+filterpath = os.path.join(BASE_DIR, 'filters/')
+SEDpath = os.path.join(BASE_DIR, 'templates/')
 
 import glob
 filterList = glob.glob(filterpath+"*res")
@@ -93,7 +94,6 @@ def ABFilterMagnitude(filter,spectrum,redshift):
         and redshift.
     """
     from scipy.interpolate import splev,splint,splrep
-    from scipy.integrate import simps
     from math import log10
     sol = 299792452.
 
@@ -135,7 +135,6 @@ def VegaFilterMagnitude(filter,spectrum,redshift):
         SED, and redshift.
     """
     from scipy.interpolate import splev,splint,splrep
-    from scipy.integrate import simps
     from math import log10
 
     wave = spectrum[0].copy()

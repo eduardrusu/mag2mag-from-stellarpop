@@ -95,11 +95,12 @@ def parse_cmdline(args,template):
     return output
 
 import sys
+import numpy as np
 
 quiet,m1,f1,z1,SEDtype,f2,z2,vega,convert,H0,Om,OL,plot,noX,test,noclean,help = parse_cmdline(sys.argv,['q','m1=f','f1=s','z1=f','T=s','f2=s','z2=f','vega','convert','H0=f','Om=f','OL=f','plot','noX','test','no-clean','u'])
 
 if help is not None:
-    print USAGE
+    print(USAGE)
     sys.exit()
 
 if H0 is None:
@@ -130,10 +131,10 @@ if convert is None:
     convert = False
 
 if m1 is None or f1 is None or z1 is None or SEDtype is None:
-    print "Error: Incomplete input information. Use -u for usage."
+    print("Error: Incomplete input information. Use -u for usage.")
     sys.exit()
 
-from stellarpop import tools
+import tools
 f1 = tools.filterfromfile(f1)
 if f2 is None:
     f2 = f1
@@ -158,7 +159,7 @@ if vega:
 else:
     m2 = tools.ABFilterMagnitude(f2,SED,z2)+magoffset
 if z1!=z2:
-    from stellarpop import distances
+    import distances
     from math import log10
     dist = distances.Distance()
     dist.OMEGA_M = Om
@@ -178,19 +179,21 @@ if convert:
         m2 += vegaAB
     else:
         m2 -= vegaAB
-print m2
+print(m2)
 
 if plot is not None:
-    import pylab
+    import matplotlib.pyplot as plt
     from scipy.interpolate import splev
-    pylab.plot(SED[0]*(1.+z1),SED[1]/SED[1].mean(),c='b')
+    plt.plot(SED[0]*(1.+z1),SED[1]/SED[1].mean(),c='b')
     if z1!=z2:
-        pylab.plot(SED[0]*(1.+z2),SED[1]/SED[1].mean(),c='r')
+        plt.plot(SED[0]*(1.+z2),SED[1]/SED[1].mean(),c='r')
     wave = SED[0]*(1.+z1)
     cond = (wave>=f1[0][0])&(wave<=f1[0][-1])
-    pylab.plot(wave[cond],splev(wave[cond],f1),c='b')
-    if f1!=f2:
+    plt.plot(wave[cond],splev(wave[cond],f1),c='b')
+    print(type(f1), f1)
+    same = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
+    if not same:
         wave = SED[0]*(1.+z2)
         cond = (wave>=f2[0][0])&(wave<=f2[0][-1])
-        pylab.plot(wave[cond],splev(wave[cond],f2),c='r')
-    pylab.show()
+        plt.plot(wave[cond],splev(wave[cond],f2),c='r')
+    plt.show()
