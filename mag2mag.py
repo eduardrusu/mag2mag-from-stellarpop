@@ -184,15 +184,18 @@ print(m2)
 if plot is not None:
     import matplotlib.pyplot as plt
     from scipy.interpolate import splev
-    plt.plot(SED[0]*(1.+z1),SED[1]/SED[1].mean(),c='b')
+    plt.plot(SED[0]*(1.+z1),SED[1]/SED[1].mean(),c='k', label='Input SED')
     if z1!=z2:
         plt.plot(SED[0]*(1.+z2),SED[1]/SED[1].mean(),c='r')
     wave = SED[0]*(1.+z1)
     cond = (wave>=f1[0][0])&(wave<=f1[0][-1])
-    plt.plot(wave[cond],splev(wave[cond],f1),c='b')
-    same = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
-    if not same:
+    plt.plot(wave[cond],splev(wave[cond],f1),c='b', label='Input Filter')
+    same_filter = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
+    if not same_filter:
         wave = SED[0]*(1.+z2)
         cond = (wave>=f2[0][0])&(wave<=f2[0][-1])
-        plt.plot(wave[cond],splev(wave[cond],f2),c='r')
+        plt.plot(wave[cond],splev(wave[cond],f2),c='r', label='Output Filter')
+    plt.xlabel('Wavelength (Angstroms)')
+    plt.ylabel('Normalized Flux')
+    plt.legend()
     plt.show()
