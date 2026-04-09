@@ -190,7 +190,6 @@ if plot is not None:
     wave = SED[0]*(1.+z1)
     cond = (wave>=f1[0][0])&(wave<=f1[0][-1])
     plt.plot(wave[cond],splev(wave[cond],f1),c='b')
-    print(type(f1), f1)
     same = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
     if not same:
         wave = SED[0]*(1.+z2)
