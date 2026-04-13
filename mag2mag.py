@@ -1,14 +1,23 @@
-#!/usr/bin/python -W ignore
+import os
+import sys
+from math import log10
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.interpolate import splev
+
+import distances
+import tools
 
 USAGE = """
 NAME
         mag2mag
 
 PURPOSE
-        Given a galaxy of type T at redshift z1 with magnitude m1 in 
-        filter1, compute magnitude m2 in filter2 for the same galaxy at 
+        Given a galaxy of type T at redshift z1 with magnitude m1 in
+        filter1, compute magnitude m2 in filter2 for the same galaxy at
         redshift z2.
-        
+
 COMMENTS
         Tricks the hyper-z photometric redshift code into doing this.
         PGPLOT module requires /usr/local/bin/perl at KIPAC.
@@ -25,10 +34,8 @@ FLAGS
         -Om          Omega matter [0.3]
         -OL          Omega lambda [0.7]
         -plot        Illustrate results with a nice plot
-        -noX         Do the plotting quietly (not to xwin)
         -test        Do an example run (the first one on the list below)
-        -no-clean    Keep various output files for posterity
-       
+
 INPUTS
         -m1       f         input magnitude
         -f1       s         input filter
@@ -36,7 +43,6 @@ INPUTS
         -T        s         galaxy spectral type
         -f2       s         output filter
         -z2       f         output redshift
-        stdin               Provide compulsory inputs when prompted [Not yet functional]
 
 OPTIONAL INPUTS
 
@@ -44,7 +50,7 @@ OUTPUTS
         stdout       Useful information
 
 EXAMPLES
-        
+
         mag2mag -T CWW_Sbc_ext -m1 25 -f1 'Johnson_H'    -z1 0.6 \\
                  -plot -vega -convert -f2 'F814W_ACSWFC' -z2 1.4
 
@@ -55,17 +61,18 @@ EXAMPLES
                             -plot -convert -f2 'Johnson_B'    -z2 0.0
 """
 
-def parse_cmdline(args,template):
+
+def parse_cmdline(args, template):
     options = {}
     parse = [i for i in args]
 
-    del parse[0] # Delete program name
+    del parse[0]  # Delete program name
     while len(parse):
         flag = parse[0][1:]
         del parse[0]
-        if flag.find('=')>=0:
-            value = flag.split('=')[1]
-        elif len(parse)>0 and parse[0][0]!='-':
+        if flag.find("=") >= 0:
+            value = flag.split("=")[1]
+        elif len(parse) > 0 and parse[0][0] != "-":
             value = parse[0]
             del parse[0]
         else:
@@ -75,17 +82,17 @@ def parse_cmdline(args,template):
 
     output = []
     for item in template:
-        tmp = item.split('=')
+        tmp = item.split("=")
         option = tmp[0]
         if option not in flags:
             output.append(None)
             continue
-        if len(tmp)>1:
-            if tmp[1]=='f':
+        if len(tmp) > 1:
+            if tmp[1] == "f":
                 output.append(float(options[option]))
-            elif tmp[1]=='i':
+            elif tmp[1] == "i":
                 output.append(int(options[option]))
-            elif tmp[1]=='s':
+            elif tmp[1] == "s":
                 output.append(options[option])
             else:
                 output.append(True)
@@ -94,38 +101,57 @@ def parse_cmdline(args,template):
 
     return output
 
-import sys
-import numpy as np
 
-quiet,m1,f1,z1,SEDtype,f2,z2,vega,convert,H0,Om,OL,plot,noX,test,noclean,help = parse_cmdline(sys.argv,['q','m1=f','f1=s','z1=f','T=s','f2=s','z2=f','vega','convert','H0=f','Om=f','OL=f','plot','noX','test','no-clean','u'])
+quiet, m1, f1, z1, SEDtype, f2, z2, vega, convert, H0, Om, OL, plot, test, help = parse_cmdline(
+    sys.argv,
+    [
+        "q",
+        "m1=f",
+        "f1=s",
+        "z1=f",
+        "T=s",
+        "f2=s",
+        "z2=f",
+        "vega",
+        "convert",
+        "H0=f",
+        "Om=f",
+        "OL=f",
+        "plot",
+        "test",
+        "u",
+    ],
+)
 
 if help is not None:
     print(USAGE)
     sys.exit()
 
 if H0 is None:
-    H0 = 70.
+    H0 = 70.0
 if Om is None:
     Om = 0.3
 if OL is None:
     OL = 0.7
 
 if test is not None:
-    SEDtype = 'Sbc_cww'
-#    SEDtype = 'CWW_Sbc_ext'
-    m1 = 25.
-    f1 = 'H_Johnson'
+    SEDtype = "Sbc_cww"
+    #    SEDtype = 'CWW_Sbc_ext'
+    m1 = 25.0
+    f1 = "H_Johnson"
     z1 = 0.6
-    f2 = 'F814W_WFC'
+    f2 = "F814W_WFC"
     z2 = 1.4
-    cmd = "%s -T %s -m1 %f -f1 %s -z1 %f -f2 %s -z2 %f -plot \
-                -vega -convert" % (sys.argv[0],SEDtype,m1,f1,z1,f2,z2)
-    import os
+    cmd = (
+        "%s -T %s -m1 %f -f1 %s -z1 %f -f2 %s -z2 %f -plot \
+                -vega -convert"
+        % (sys.argv[0], SEDtype, m1, f1, z1, f2, z2)
+    )
     os.system(cmd)
     sys.exit()
 
 if vega is None:
-    vega = False # No vega flag = use AB mags
+    vega = False  # No vega flag = use AB mags
 
 if convert is None:
     convert = False
@@ -134,7 +160,6 @@ if m1 is None or f1 is None or z1 is None or SEDtype is None:
     print("Error: Incomplete input information. Use -u for usage.")
     sys.exit()
 
-import tools
 f1 = tools.filterfromfile(f1)
 if f2 is None:
     f2 = f1
@@ -143,59 +168,55 @@ else:
 if z2 is None:
     z2 = z1
 
-SED = tools.getSED(SEDtype)
+SED = tools.get_sed(SEDtype)
 
 if vega:
-    filtermag = tools.VegaFilterMagnitude(f1,SED,z1)
+    filtermag = tools.vega_filter_magnitude(f1, SED, z1)
 #    vegatmp = tools.getSED('Vega')
-#    vegaAB = tools.ABFilterMagnitude(f1,vegatmp,0.)
+#    vega_ab = tools.ab_filter_magnitude(f1,vegatmp,0.)
 else:
-    filtermag = tools.ABFilterMagnitude(f1,SED,z1)
-magoffset = m1-filtermag
-#print magoffset
+    filtermag = tools.ab_filter_magnitude(f1, SED, z1)
+magoffset = m1 - filtermag
+# print magoffset
 
 if vega:
-    m2 = tools.VegaFilterMagnitude(f2,SED,z2)+magoffset
+    m2 = tools.vega_filter_magnitude(f2, SED, z2) + magoffset
 else:
-    m2 = tools.ABFilterMagnitude(f2,SED,z2)+magoffset
-if z1!=z2:
-    import distances
-    from math import log10
+    m2 = tools.ab_filter_magnitude(f2, SED, z2) + magoffset
+if z1 != z2:
     dist = distances.Distance()
     dist.OMEGA_M = Om
     dist.OMEGA_L = OL
-    dist.h = H0/100.
-    if z2!=0.:
-        dimming = dist.Dl(z1)/dist.Dl(z2)
+    dist.h = H0 / 100.0
+    if z2 != 0.0:
+        dimming = dist.Dl(z1) / dist.Dl(z2)
     else:
-        dimming = dist.Dl(z1)/1e-5
-    m2 -= 5.*log10(dimming)
+        dimming = dist.Dl(z1) / 1e-5
+    m2 -= 5.0 * log10(dimming)
 
 if convert:
-    vegatmp = tools.getSED('Vega')
-    vegatmp = (vegatmp[0],vegatmp[1])
-    vegaAB = tools.ABFilterMagnitude(f2,vegatmp,0.)
+    vegatmp = tools.get_sed("Vega")
+    vegatmp = (vegatmp[0], vegatmp[1])
+    vega_ab = tools.ab_filter_magnitude(f2, vegatmp, 0.0)
     if vega:
-        m2 += vegaAB
+        m2 += vega_ab
     else:
-        m2 -= vegaAB
+        m2 -= vega_ab
 print(m2)
 
 if plot is not None:
-    import matplotlib.pyplot as plt
-    from scipy.interpolate import splev
-    plt.plot(SED[0]*(1.+z1),SED[1]/SED[1].mean(),c='k', label='Input SED')
-    if z1!=z2:
-        plt.plot(SED[0]*(1.+z2),SED[1]/SED[1].mean(),c='r')
-    wave = SED[0]*(1.+z1)
-    cond = (wave>=f1[0][0])&(wave<=f1[0][-1])
-    plt.plot(wave[cond],splev(wave[cond],f1),c='b', label='Input Filter')
+    plt.plot(SED[0] * (1.0 + z1), SED[1] / SED[1].mean(), c="k", label="Input SED")
+    if z1 != z2:
+        plt.plot(SED[0] * (1.0 + z2), SED[1] / SED[1].mean(), c="r")
+    wave = SED[0] * (1.0 + z1)
+    cond = (wave >= f1[0][0]) & (wave <= f1[0][-1])
+    plt.plot(wave[cond], splev(wave[cond], f1), c="b", label="Input Filter")
     same_filter = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
     if not same_filter:
-        wave = SED[0]*(1.+z2)
-        cond = (wave>=f2[0][0])&(wave<=f2[0][-1])
-        plt.plot(wave[cond],splev(wave[cond],f2),c='r', label='Output Filter')
-    plt.xlabel('Wavelength (Angstroms)')
-    plt.ylabel('Normalized Flux')
+        wave = SED[0] * (1.0 + z2)
+        cond = (wave >= f2[0][0]) & (wave <= f2[0][-1])
+        plt.plot(wave[cond], splev(wave[cond], f2), c="r", label="Output Filter")
+    plt.xlabel("Wavelength (Angstroms)")
+    plt.ylabel("Normalized Flux")
     plt.legend()
     plt.show()
