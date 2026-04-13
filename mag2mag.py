@@ -100,7 +100,6 @@ def mag2mag(argv=None):
 
     if args.test:
         args.sedtype = "Sbc_cww"
-        # args.sedtype = "CWW_Sbc_ext"
         args.m1 = 25.0
         args.f1 = "H_Johnson"
         args.z1 = 0.6
