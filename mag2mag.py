@@ -1,5 +1,4 @@
-import os
-import sys
+import argparse
 from math import log10
 
 import matplotlib.pyplot as plt
@@ -62,161 +61,123 @@ EXAMPLES
 """
 
 
-def parse_cmdline(args, template):
-    options = {}
-    parse = [i for i in args]
-
-    del parse[0]  # Delete program name
-    while len(parse):
-        flag = parse[0][1:]
-        del parse[0]
-        if flag.find("=") >= 0:
-            value = flag.split("=")[1]
-        elif len(parse) > 0 and parse[0][0] != "-":
-            value = parse[0]
-            del parse[0]
-        else:
-            value = True
-        options[flag] = value
-    flags = options.keys()
-
-    output = []
-    for item in template:
-        tmp = item.split("=")
-        option = tmp[0]
-        if option not in flags:
-            output.append(None)
-            continue
-        if len(tmp) > 1:
-            if tmp[1] == "f":
-                output.append(float(options[option]))
-            elif tmp[1] == "i":
-                output.append(int(options[option]))
-            elif tmp[1] == "s":
-                output.append(options[option])
-            else:
-                output.append(True)
-        else:
-            output.append(True)
-
-    return output
-
-
-quiet, m1, f1, z1, SEDtype, f2, z2, vega, convert, H0, Om, OL, plot, test, help = parse_cmdline(
-    sys.argv,
-    [
-        "q",
-        "m1=f",
-        "f1=s",
-        "z1=f",
-        "T=s",
-        "f2=s",
-        "z2=f",
-        "vega",
-        "convert",
-        "H0=f",
-        "Om=f",
-        "OL=f",
-        "plot",
-        "test",
-        "u",
-    ],
-)
-
-if help is not None:
-    print(USAGE)
-    sys.exit()
-
-if H0 is None:
-    H0 = 70.0
-if Om is None:
-    Om = 0.3
-if OL is None:
-    OL = 0.7
-
-if test is not None:
-    SEDtype = "Sbc_cww"
-    #    SEDtype = 'CWW_Sbc_ext'
-    m1 = 25.0
-    f1 = "H_Johnson"
-    z1 = 0.6
-    f2 = "F814W_WFC"
-    z2 = 1.4
-    cmd = (
-        "%s -T %s -m1 %f -f1 %s -z1 %f -f2 %s -z2 %f -plot \
-                -vega -convert"
-        % (sys.argv[0], SEDtype, m1, f1, z1, f2, z2)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="mag2mag",
+        add_help=False,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=USAGE,
     )
-    os.system(cmd)
-    sys.exit()
 
-if vega is None:
-    vega = False  # No vega flag = use AB mags
+    parser.add_argument("-u", action="store_true", dest="show_usage")
+    parser.add_argument("-q", action="store_true", dest="quiet")
+    parser.add_argument("-vega", action="store_true", dest="vega")
+    parser.add_argument("-convert", action="store_true", dest="convert")
+    parser.add_argument("-plot", action="store_true", dest="plot")
+    parser.add_argument("-test", action="store_true", dest="test")
 
-if convert is None:
-    convert = False
+    parser.add_argument("-m1", type=float)
+    parser.add_argument("-f1")
+    parser.add_argument("-z1", type=float)
+    parser.add_argument("-T", dest="sedtype")
+    parser.add_argument("-f2")
+    parser.add_argument("-z2", type=float)
 
-if m1 is None or f1 is None or z1 is None or SEDtype is None:
-    print("Error: Incomplete input information. Use -u for usage.")
-    sys.exit()
+    parser.add_argument("-H0", type=float, default=70.0)
+    parser.add_argument("-Om", type=float, default=0.3)
+    parser.add_argument("-OL", type=float, default=0.7)
 
-f1 = tools.filterfromfile(f1)
-if f2 is None:
-    f2 = f1
-else:
-    f2 = tools.filterfromfile(f2)
-if z2 is None:
-    z2 = z1
+    return parser
 
-SED = tools.get_sed(SEDtype)
 
-if vega:
-    filtermag = tools.vega_filter_magnitude(f1, SED, z1)
-#    vegatmp = tools.getSED('Vega')
-#    vega_ab = tools.ab_filter_magnitude(f1,vegatmp,0.)
-else:
-    filtermag = tools.ab_filter_magnitude(f1, SED, z1)
-magoffset = m1 - filtermag
-# print magoffset
+def mag2mag(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
-if vega:
-    m2 = tools.vega_filter_magnitude(f2, SED, z2) + magoffset
-else:
-    m2 = tools.ab_filter_magnitude(f2, SED, z2) + magoffset
-if z1 != z2:
-    dist = distances.Distance()
-    dist.OMEGA_M = Om
-    dist.OMEGA_L = OL
-    dist.h = H0 / 100.0
-    if z2 != 0.0:
-        dimming = dist.Dl(z1) / dist.Dl(z2)
+    if args.show_usage:
+        print(USAGE)
+        raise SystemExit(0)
+
+    if args.test:
+        args.sedtype = "Sbc_cww"
+        # args.sedtype = "CWW_Sbc_ext"
+        args.m1 = 25.0
+        args.f1 = "H_Johnson"
+        args.z1 = 0.6
+        args.f2 = "F814W_WFC"
+        args.z2 = 1.4
+        args.plot = True
+        args.vega = True
+        args.convert = True
+
+    if args.m1 is None or args.f1 is None or args.z1 is None or args.sedtype is None:
+        parser.error("Incomplete input information. Use -u for usage.")
+
+    f1 = tools.filterfromfile(args.f1)
+    f2 = f1 if args.f2 is None else tools.filterfromfile(args.f2)
+    z2 = args.z1 if args.z2 is None else args.z2
+
+    sed = tools.get_sed(args.sedtype)
+
+    if args.vega:
+        filtermag = tools.vega_filter_magnitude(f1, sed, args.z1)
     else:
-        dimming = dist.Dl(z1) / 1e-5
-    m2 -= 5.0 * log10(dimming)
+        filtermag = tools.ab_filter_magnitude(f1, sed, args.z1)
 
-if convert:
-    vegatmp = tools.get_sed("Vega")
-    vegatmp = (vegatmp[0], vegatmp[1])
-    vega_ab = tools.ab_filter_magnitude(f2, vegatmp, 0.0)
-    if vega:
-        m2 += vega_ab
+    magoffset = args.m1 - filtermag
+
+    if args.vega:
+        m2 = tools.vega_filter_magnitude(f2, sed, z2) + magoffset
     else:
-        m2 -= vega_ab
-print(m2)
+        m2 = tools.ab_filter_magnitude(f2, sed, z2) + magoffset
 
-if plot is not None:
-    plt.plot(SED[0] * (1.0 + z1), SED[1] / SED[1].mean(), c="k", label="Input SED")
-    if z1 != z2:
-        plt.plot(SED[0] * (1.0 + z2), SED[1] / SED[1].mean(), c="r")
-    wave = SED[0] * (1.0 + z1)
-    cond = (wave >= f1[0][0]) & (wave <= f1[0][-1])
-    plt.plot(wave[cond], splev(wave[cond], f1), c="b", label="Input Filter")
-    same_filter = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
-    if not same_filter:
-        wave = SED[0] * (1.0 + z2)
-        cond = (wave >= f2[0][0]) & (wave <= f2[0][-1])
-        plt.plot(wave[cond], splev(wave[cond], f2), c="r", label="Output Filter")
-    plt.xlabel("Wavelength (Angstroms)")
-    plt.ylabel("Normalized Flux")
-    plt.legend()
-    plt.show()
+    if args.z1 != z2:
+        dist = distances.Distance()
+        dist.OMEGA_M = args.Om
+        dist.OMEGA_L = args.OL
+        dist.h = args.H0 / 100.0
+
+        if z2 != 0.0:
+            dimming = dist.Dl(args.z1) / dist.Dl(z2)
+        else:
+            dimming = dist.Dl(args.z1) / 1e-5
+
+        m2 -= 5.0 * log10(dimming)
+
+    if args.convert:
+        vegatmp = tools.get_sed("Vega")
+        vegatmp = (vegatmp[0], vegatmp[1])
+        vega_ab = tools.ab_filter_magnitude(f2, vegatmp, 0.0)
+        if args.vega:
+            m2 += vega_ab
+        else:
+            m2 -= vega_ab
+
+    if not args.quiet:
+        print(m2)
+
+    if args.plot:
+        plt.plot(sed[0] * (1.0 + args.z1), sed[1] / sed[1].mean(), c="k", label="Input SED")
+        if args.z1 != z2:
+            plt.plot(sed[0] * (1.0 + z2), sed[1] / sed[1].mean(), c="r")
+
+        wave = sed[0] * (1.0 + args.z1)
+        cond = (wave >= f1[0][0]) & (wave <= f1[0][-1])
+        plt.plot(wave[cond], splev(wave[cond], f1), c="b", label="Input Filter")
+
+        same_filter = len(f1) == len(f2) and all(np.array_equal(a, b) for a, b in zip(f1, f2))
+        if not same_filter:
+            wave = sed[0] * (1.0 + z2)
+            cond = (wave >= f2[0][0]) & (wave <= f2[0][-1])
+            plt.plot(wave[cond], splev(wave[cond], f2), c="r", label="Output Filter")
+
+        plt.xlabel("Wavelength (Angstroms)")
+        plt.ylabel("Normalized Flux")
+        plt.legend()
+        plt.show()
+
+    return m2
+
+
+if __name__ == "__main__":
+    mag2mag()
