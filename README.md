@@ -7,4 +7,4 @@ From the original README:
 
 Example usage:
 
-	python mag2mag.py -T Sbc_cww -m1 24 -f1 V_Johnson -z1 1.00 -f2 U_Johnson -z2 0.00 -plot
+	python mag2mag.py -T Sbc_cww -m1 24 -m1_err 0.01 -f1 V_Johnson -z1 1.00 -f2 U_Johnson -z2 0.00 -errbar -plot
