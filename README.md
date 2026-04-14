@@ -1,5 +1,5 @@
 Fork of [LensPop](https://github.com/tcollett/LensPop), but removing all functionality unrelated to `mag2mag.py`.
-The original code is now properly linted, and I have added error bar estimation for the function `ab_filter_magnitude()`.
+The original code is now properly linted, and I have added error bar estimation for the function `ab_filter_magnitude()`, taking into account filter, template and input magnitude uncertainties.
 
 From the original README:
 - Our SED code gives correct magnitudes if the SED is in units of ergs/s/cm/cm/Angstrom, and our distance class gives distances in Mpc/h, so we will need to use the conversion Mpc = 3.08568e24cm and assume a value for h.
